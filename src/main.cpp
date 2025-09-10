@@ -6,6 +6,11 @@
 #include <hal/hal.h>
 #include <esp_sleep.h> // Biblioteca necessária para usar o deep sleep
 
+#include "SystemManager.h"
+#include "PowerMode.h"
+#include "BatteryManager.h"
+
+
 #define PIN_LORA_TX 13  // Pino que será ativado durante a transmissão
 
 // Tempo de deep sleep em microssegundos (15 segundos)
@@ -323,7 +328,7 @@ void setupLoRaWAN()
   LMIC.dn2Dr = DR_SF10;
 
   // Set data rate and transmit power for uplink
-  LMIC_setDrTxpow(DR_SF12, LORA_GAIN);
+  LMIC_setDrTxpow(DR_SF10, LORA_GAIN);
 
 
   // Start job
