@@ -1,33 +1,54 @@
-#ifndef BATTERYMANAGER_H
-#define BATTERYMANAGER_H
+#ifndef BATTERY_MANAGER_H
+#define BATTERY_MANAGER_H
 
+#include <Arduino.h>
 #include <cmath>
 
 class BatteryManager {
 public:
-    enum class Mode { Normal, Economy, Critical };
+  enum class Mode : uint8_t { Normal, Economy, Critical };
 
-    BatteryManager() = default;
+  // Por padrão mantém seu "pin = 1" como você já usava; ajuste se o seu
+  // mapeamento for GPIO36 (ADC1_CH0) em outra revisão de placa.
+  BatteryManager(int pin = 1, float vmin = 3.3f, float vmax = 4.2f);
 
-    // Define o nível atual da bateria em porcentagem (0..100).
-    // Valores fora do intervalo são automaticamente "clampados".
-    void setLevelPercent(float percent);
+  // Atualiza leitura (tensão -> % -> modo)
+  void update();
 
-    // Lê o nível atual em porcentagem.
-    float levelPercent() const { return _levelPercent; }
+  // Acesso aos últimos valores calculados
+  float voltage()   const { return _lastVbat; }     // Volts
+  float percent()   const { return _levelPercent; } // 0..100
+  Mode  mode()      const { return _mode; }
 
-    // Decide o modo com base no nível atual (%).
-    Mode selectMode() const;
+  // Utilitários
+  static const char* toString(Mode m);
 
-    // Helper para imprimir (útil em logs/Serial).
-    static const char* toString(Mode m);
-
-    // (Opcional) Converte tensão -> % e atualiza o nível.
-    // Ex.: setLevelFromVoltage(vbat, 3.3f, 4.2f);
-    void setLevelFromVoltage(float vbat, float vmin, float vmax);
+  // Ajustes finos (se quiser customizar thresholds em runtime)
+  void setThresholds(float lowPct, float critPct) {
+    _lowThreshold = lowPct; _critThreshold = critPct;
+  }
 
 private:
-    float _levelPercent = NAN; // 0..100
+  // Conversões
+  float readVbatVolts() const;         // Lê ADC e devolve VBAT (V)
+  static float lipoPercent(float v);    // Aproximação 1S (repouso)
+
+  // Classificação a partir da % atual
+  Mode classify(float pct) const;
+
+  // Config
+  int   _adcPin;
+  float _vmin, _vmax;                  // 1S LiPo: 3.3 .. 4.2 V
+  float _divider = 4.9f;               // (100k+390k)/100k (Heltec)
+
+  // Thresholds de % (padrão de sua especificação: ≥71 Normal; 30..70 Econ; ≤29 Crit)
+  float _lowThreshold  = 70.0f;
+  float _critThreshold = 29.0f;
+
+  // Estado
+  float _lastVbat      = NAN;
+  float _levelPercent  = NAN;
+  Mode  _mode          = Mode::Critical;
 };
 
 #endif

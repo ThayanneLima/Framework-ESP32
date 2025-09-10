@@ -6,8 +6,8 @@
 #include <hal/hal.h>
 #include <esp_sleep.h> // Biblioteca necessária para usar o deep sleep
 
-#include "SystemManager.h"
 #include "PowerMode.h"
+#include "SystemManager.h"
 #include "BatteryManager.h"
 
 
@@ -336,8 +336,9 @@ void setupLoRaWAN()
  
 }
 
-
-
+//Nível de carga da bateria
+BatteryManager bm(/*pin*/1);
+SystemManager sm(bm);
 
 void setup() {
   // Inicializando os comandos no TTGO lora32 (placa usada para ensino na unioeste).
@@ -349,7 +350,7 @@ void setup() {
   
   Serial.println("Iniciando");
   delay(2000);
-//digitalWrite(13,HIGH);
+  //digitalWrite(13,HIGH);
 
   // Inicializa o barramento I2C nos pinos GPIO 21 (SDA) e GPIO 22 (SCL)
   Wire.begin(21, 22);
@@ -382,23 +383,27 @@ void setup() {
 //esp_deep_sleep_start();
 
 //----------------------------
-//Nível de carga da bateria
-BatteryManager bm;
-
-// caso você já tenha o nível em %:
-bm.setLevelPercent(68.0f);
-auto modo = bm.selectMode();           // Economy
-Serial.println(BatteryManager::toString(modo));
-
-// ou, se você mede tensão e quer converter:
-bm.setLevelFromVoltage(/*vbat=*/3.85f, /*vmin=*/3.3f, /*vmax=*/4.2f);
-modo = bm.selectMode();
+sm.init();
 //----------------------------
 }
 
 unsigned long displayTime=0;
 void loop()
 {
+  sm.tick();
+  float pct = sm.batteryPercent();
+
+  auto mode = PowerMode::select_for(&sm, pct);
+  Serial.printf("[Power] v=%.3fV  pct=%.0f%%  -> %s\n",
+                sm.batteryVoltage(), pct,
+                BatteryManager::toString(sm.currentMode())); // opcional
+
+  mode->enter_mode();   // executa a estratégia
+  mode->run_tasks();    // se não dormir, roda tarefas do modo
+
+  delay(1000);          // ajuste conforme sua aplicação
+  
+  //---------------------------
   unsigned long currentTime= millis();
   if (currentTime - displayTime > 2000) {
     Serial.println(n_packet);

@@ -1,21 +1,33 @@
 #include "SystemManager.h"
-#include "PowerMode.h"
-#include <Arduino.h>
-
-SystemManager::SystemManager()
-  : cpu_frequency(240.0f), current_mode(nullptr) {}
 
 void SystemManager::init() {
-    Serial.println("SystemManager inicializado");
+  battery.update();
+  _currentMode = battery.mode();
+  applyPolicy(_currentMode);
 }
 
-void SystemManager::update_mode(PowerMode* mode) {
-    current_mode = mode;
-    if (current_mode) {
-        current_mode->enter_mode();
-    }
+void SystemManager::tick() {
+  battery.update();
+  BatteryManager::Mode m = battery.mode();
+  if (m != _currentMode && (millis() - _lastPolicyMs) > _policyDebounceMs) {
+    _currentMode = m;
+    applyPolicy(m);
+  }
 }
 
-void SystemManager::run() {
-    Serial.println("Executando tarefas do SystemManager...");
+void SystemManager::applyPolicy(BatteryManager::Mode m) {
+  _lastPolicyMs = millis();
+
+  // Aqui você pode ligar/desligar periféricos, ajustar TX power etc.
+  switch (m) {
+    case BatteryManager::Mode::Normal:
+      // operação normal
+      break;
+    case BatteryManager::Mode::Economy:
+      // reduzir frequência de leitura/envio, desligar OLED/Vext, reduzir TX power…
+      break;
+    case BatteryManager::Mode::Critical:
+      // preparar deep-sleep, salvar estado, etc.
+      break;
+  }
 }
