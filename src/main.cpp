@@ -381,6 +381,19 @@ void setup() {
 //digitalWrite(PIN_LORA_TX, LOW); // Desativa o pino 13 após a transmissão
 //esp_deep_sleep_start();
 
+//----------------------------
+//Nível de carga da bateria
+BatteryManager bm;
+
+// caso você já tenha o nível em %:
+bm.setLevelPercent(68.0f);
+auto modo = bm.selectMode();           // Economy
+Serial.println(BatteryManager::toString(modo));
+
+// ou, se você mede tensão e quer converter:
+bm.setLevelFromVoltage(/*vbat=*/3.85f, /*vmin=*/3.3f, /*vmax=*/4.2f);
+modo = bm.selectMode();
+//----------------------------
 }
 
 unsigned long displayTime=0;
